@@ -3,7 +3,7 @@ The code in this repository can be used to download all of the EM time series da
 
 The main function in this repository is `getData.m` and the input is the IRIS site ID. See `getData_demo.m` for example usage. 
 
-Sample output for running this code is at http://mag.gmu.edu/git-data/IRIS-EM-download/data.
+Sample output for running this code is at http://mag.gmu.edu/git-data/IRIS-EM-download/
 
 For each channel available from a site, `getData_demo.m`
 
