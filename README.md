@@ -22,6 +22,7 @@ For each channel available from a site, `getData_demo.m`
 
 There is a MATLAB client for IRIS data at http://ds.iris.edu/ds/nodes/dmc/software/downloads/irisFetch.m/.
 
-When this code in the repository was first written, there was a reason why this client was not used (it may not have been available or it may not have worked).
+When this code in the repository was first written, there was a reason why this client was not used (it may not have been available or it may not have worked). It also may have been because it was not possible to get all of the data available
+through the web service through the MATLAB client (for example, data in "natural" EM units).
 
 See the directory `irisFetch.m` for an example of downloading the data using this client. The code in `getData.m` should be replaced a call to `irisFetch.m`.
