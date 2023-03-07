@@ -19,6 +19,7 @@ if (nargin == 0)
   update = false;
 end
 
+% TODO: Does this service have JSON output as an option?
 url = 'http://service.iris.edu/irisws/fedcatalog/1/query?net=EM';
 
 scriptDir = fullfile(fileparts(mfilename('fullpath'))); % Dir of this script
@@ -26,9 +27,9 @@ fnametxt  = fullfile(scriptDir,'data','catalog.txt');
 fnamemat  = fullfile(scriptDir,'data','catalog.mat');
 
 if ~exist(fnametxt,'file') || update
-    fprintf('Getting %s\n', url);
-    websave(url, fnametxt);
-    fprintf('Wrote %s\n', fnametxt);
+    fprintf('getCatalog: Getting %s\n', url);
+    websave(fnametxt, url);
+    fprintf('getCatalog: Wrote %s\n', fnametxt);
 end
 
 if ~exist(fnamemat,'file') || update
@@ -55,9 +56,10 @@ if ~exist(fnamemat,'file') || update
         end
 	end
 	fclose(fid);
-    fprintf('Catalog has %d sites\n', length(unique(catalog(:,2))));
-    fprintf('Writing %s\n', fnamemat);
+    fprintf('getCatalog: Catalog has %d sites\n', length(unique(catalog(:,2))));
+    fprintf('getCatalog: Writing %s\n', fnamemat);
 	save(fnamemat, 'catalog');
+    fprintf('getCatalog: Wrote %s\n', fnamemat);    
 else
 	load(fnamemat, 'catalog');
 end

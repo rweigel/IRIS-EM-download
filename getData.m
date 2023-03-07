@@ -1,79 +1,93 @@
-function fname_original = getData(sta,cha,days,units,dirout)
+function [time, data, segments, fname] = getData(station, channel, start, stop)
+%GETDATA
+%
+%   See getData_demo for example usage.
 
-% Web service API:
-% http://service.iris.edu/irisws/
-% http://service.iris.edu/irisws/timeseries/1/
+dirout = fullfile(fileparts(mfilename('fullpath')),'data');
+dirout = fullfile(dirout,station);
+fname = sprintf('%s-%s-%s_through_%s',station,channel,start(1:10),stop(1:10));
+fname = fullfile(dirout,fname);
 
-% http://service.iris.edu/irisws/fedcatalog/1/query?net=EM
-% Get actual last day in archive from bottom of, e.g.,
-% http://www.iris.washington.edu/mda/EM/MBB05
-
-if nargin < 5
-    % Dir of this script
-    dirout = fullfile(fileparts(mfilename('fullpath')),'data'); 
+if exist([fname,'.mat'],'file')
+    fprintf('Reading %s.mat\n',fname);
+    load(fname);
+    return;
 end
+
+% Dir of irisFetch code
+dircode = fullfile(fileparts(mfilename('fullpath')),'irisFetch'); 
+
+jar = 'IRIS-WS-2.0.18.jar';
+if ~exist(fullfile(dircode,jar),'file')
+    % Download jar file.
+    jarurl = 'https://github.com/iris-edu/iris-ws/';
+    jarurl = [jarurl, 'releases/download/2.0.18/',jar];
+    websave(jar,jarurl);
+end
+
+addpath(fullfile(dircode,'irisFetch-matlab-2.0.12'));
+javaaddpath(fullfile(dircode,'IRIS-WS-2.0.18.jar'));
+
+fprintf('getData: Requesting %s %s from %s to %s\n',station,channel,start,stop);
+segments = irisFetch.Traces('EM',station,'--',channel,start,stop);
+
+for s = 1:length(segments)
+    % Display content. mytrace has elements of data segment on a uniform
+    % time grid and with no gaps.
+    %segments(s)
+end
+
+data = [];
+time = [];
+for s = 1:length(segments)    
+    fprintf('getData: Segment %d: %s to %s\n',s,...
+        datestr(datevec(segments(s).startTime),31),...
+        datestr(datevec(segments(s).endTime),31));
+    % Segment data
+    sdata = segments(s).data;
+
+    % Does this convert to "natural" EM units? 
+    % segments(s).sensitivityUnits is empty.
+    % sdata = sdata/segments(s).sensitivity;
+    data = [data; sdata];
+
+    % Segment time in fraction of day since start of segment.
+    stime = [0:length(sdata)-1]'*(segments(s).sampleRate/86400);
+
+    % Segment time as MATLAB datenum.
+    stime = segments(s).startTime + stime;    
+    time = [time; stime];
+end
+
 if ~exist(dirout,'dir')
     mkdir(dirout);
 end
 
-force = 0; % Try to download file even if previous failure.
+fname = sprintf('%s-%s-%s_through_%s',station,channel,start(1:10),stop(1:10));
+fname = fullfile(dirout,fname);
+save([fname,'.mat'],'time','data','segments');
+fprintf('getData: Saved %s.mat\n',[fname,'.mat'])
 
-url0 = 'http://service.iris.edu/irisws/timeseries/1/query?net=EM&';
-
-if strcmp(units,'counts')
-  url1 = 'sta=%s&loc=--&cha=%s&starttime=%sT00:00:00&endtime=%sT23:59:59&output=ascii';
+fid = fopen([fname,'.txt'],'w');
+fprintf(fid,'year, month, day, hour, minute, %s\n',channel);
+if all(isinteger(data))
+    fprintf(fid,'%d, %d, %d, %d, %d, %d, %d\n',[datevec(time),data]');
 else
-  url1 = 'sta=%s&loc=--&cha=%s&correct=true&units=DEF&starttime=%sT00:00:00&endtime=%sT23:59:59&output=ascii';
-  url1 = 'sta=%s&loc=--&cha=%s&correct=true&units=DEF&starttime=%sT23:00:00&endtime=%sT01:00:00&output=ascii';
+    fprintf(fid,'%d, %d, %d, %d, %d, %d, %.16f\n',[datevec(time),data]');
+end
+fclose(fid);
+fprintf('getData: Saved %s.txt\n',[fname,'.mat'])
+
+% Remove data from segments structure. Will print structure to JSON
+% file without data.
+for s = 1:length(segments)
+    segmentsx(s) = rmfield(segments(s),'data');
 end
 
-dir_site        = fullfile(dirout,sta);
-dir_original    = fullfile(dir_site,'original');
+addpath(fullfile(fileparts(mfilename('fullpath')),'m'));
+jsonstr = prettyjson(jsonencode(segmentsx));
 
-if ~exist(dirout,'dir')
-  % Will fail if one or more parent dirs need to be created. MATLAB 
-  % does not have an equivalent to mkdir -p.
-  mkdir(dirout);
-end
-if ~exist(dir_site,'dir')
-  mkdir(dir_site);
-end
-if ~exist(dir_original,'dir')
-  mkdir(dir_original);
-end
-
-for day = days
-
-    ds = datestr(day,29);
-
-    fname_base = sprintf('%s_%s_%s-%s.txt',sta,cha,ds,units);
-    fname_original = fullfile(dir_original,fname_base);
-    if exist(fname_original,'file') || exist([fname_original,'.gz'],'file')
-        fprintf('Found %s. Not re-downloading.\n',fname_base);
-        continue;
-    end
-    
-    url = sprintf([url0,url1],sta,cha,ds,ds);
-    urls1 = split(url,'?');
-    urls2 = split(urls1{2},'&starttime');    
-    fprintf('Downloading %s/%s/%s on %s from\n  %s?\n    %s\n    &starttime%s\n',...
-        sta,cha,units,ds,urls1{1},urls2{1},urls2{2});
-
-    try
-        urlwrite(url,fname_original);
-        fprintf('  Done.\n  Wrote %s\n', fname_original);
-        failed = 0;
-    catch
-        fprintf('  Request failed for %s\n',url);
-        failed = 1;
-    end
-    
-    if failed == 1
-        fid = fopen([fname_original,'.failed'],'w');
-        fprintf('Download failed on %s. Writing .failed file.\n',datestr(now));
-        fprintf(fid,'Download failed on %s. Writing .failed file.\n',datestr(now));
-        fclose(fid);
-        continue;
-    end
-
-end
+fid = fopen([fname,'.json'],'w');
+fprintf(fid,jsonstr);
+fclose(fid);
+fprintf('getData: Saved %s\n',[fname,'.json'])
