@@ -1,4 +1,14 @@
 station = 'VAQ58';
+% https://service.iris.edu/irisws/timeseries/docs/1/builder/
+% https://service.iris.edu/irisws/timeseries/1/query?net=EM&sta=VAQ58&cha=LQN&start=2016-06-10T18:19:06&end=2016-06-25T15:46:02&format=plot&loc=--
+% https://service.iris.edu/irisws/timeseries/1/query?net=EM&sta=VAQ58&cha=LQE&start=2016-06-10T18:19:06&end=2016-06-25T15:46:02&format=plot&loc=--
+% https://service.iris.edu/irisws/timeseries/1/query?net=EM&sta=VAQ58&cha=LQN&start=2016-06-10T18:19:06&end=2016-06-25T15:46:02&format=geocsv.tspair&loc=--
+% https://service.iris.edu/irisws/timeseries/1/query?net=EM&sta=VAQ58&cha=LQE&start=2016-06-10T18:19:06&end=2016-06-25T15:46:02&format=geocsv.tspair&loc=--
+
+%station = 'ORF03';
+station = 'RET54';
+
+%station = 'KSR29';
 
 % Get rows of data/catalog.txt associated with station.
 siteInfo = getSiteInfo(station); 
@@ -26,13 +36,22 @@ for c = 1:length(uchannels)
     stopdns = sort(stopdns);
     stop = datestr(stopdns(end),'yyyy-mm-dd HH:MM:SS');
 
-    [time,data,segments,fname] = getData(station, uchannels{c}, start, stop);
+    [segments,fname] = getData(station, uchannels{c}, start, stop);
 
-    Ns = length(segments) + 1;
+    % Add dataScaled and dataScaledUnits to each segment structure,
+    % if possible.
+    segments = counts2physical(segments,1);
+    save([fname,'.mat'],'segments');
+    fprintf('getData_demo: Saved %s\n',[fname,'.mat'])
+
     figure();orient tall;
     for s = 1:length(segments)
-        subplot(Ns, 1, s);
-        plot(segments(s).data);
+        subplot(length(segments), 1, s);
+        if isfield(segments(s),'dataScaled')
+            plot(segments(s).dataScaled);
+        else
+            plot(segments(s).data);
+        end
         th = '';
         if s == 1
             th = sprintf('%s/%s\n',station,uchannels{c});
@@ -41,19 +60,13 @@ for c = 1:length(uchannels)
                 datestr(segments(s).startTime,'yyyy-mm-ddTHH:MM:SS'),...
                 datestr(segments(s).endTime,'yyyy-mm-ddTHH:MM:SS')));
         xlabel('Sample number');
-    end
-    
-    % Interpolate onto a uniform time grid with dt = min time difference
-    timei = [floor(time(1)):min(diff(time)):time(end)];
-    datai = interp1(time,data,timei);
-
-    subplot(length(segments) + 1, 1, s+1);
-        plot(timei,datai);
-        title(sprintf('All Segments',station,uchannels{c}));
-        datetick();
-    print([fname,'.pdf'], '-dpdf');
-    print([fname,'.png'], '-dpng','-r300');
-    fprintf('Wrote %s.{pdf,png\n',fname);
+        
+        % Units of 'counts' based on plots from web service. See
+        % directory v0/scale for example plots.
+        if isfield(segments(s),'dataScaled')
+            ylabel(segments(s).dataScaledUnits);
+        else
+            ylabel('Counts'); 
+        end
+    end   
 end
-
-
