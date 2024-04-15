@@ -17,17 +17,17 @@ end
 
 % Dir of irisFetch code
 dircode = fullfile(fileparts(mfilename('fullpath')),'irisFetch'); 
-
 jar = 'IRIS-WS-2.20.1.jar';
 if ~exist(fullfile(dircode,jar),'file')
     % Download jar file.
     jarurl = 'http://ds.iris.edu/files/IRIS-WS/2/2.20.1/';
     jarurl = [jarurl,jar];
-    websave(jar,jarurl);
+    fprintf('Downloading %s\n',jarurl)
+    websave(fullfile(dircode,jar),jarurl);
 end
 
 addpath(fullfile(dircode,'irisFetch-matlab-2.0.12'));
-javaaddpath(fullfile(dircode,'IRIS-WS-2.0.18.jar'));
+javaaddpath(fullfile(dircode,jar));
 
 fprintf('getData: Requesting %s %s from %s to %s\n',station,channel,start,stop);
 segments = irisFetch.Traces('EM',station,'--',channel,start,stop);

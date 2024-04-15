@@ -6,12 +6,13 @@ station = 'VAQ58';
 % https://service.iris.edu/irisws/timeseries/1/query?net=EM&sta=VAQ58&cha=LQE&start=2016-06-10T18:19:06&end=2016-06-25T15:46:02&format=geocsv.tspair&loc=--
 
 %station = 'ORF03';
-station = 'RET54';
+%station = 'RET54';
 
 %station = 'KSR29';
+%station = 'ORG03';
 
 % Get rows of data/catalog.txt associated with station.
-siteInfo = getSiteInfo(station); 
+siteInfo = getSiteInfo(station);
 
 channels = siteInfo(:,1);
 
@@ -23,7 +24,7 @@ for c = 1:length(uchannels)
 
     % Find rows associated with channel
     I = strmatch(uchannels{c},channels);
-    
+
     % Get earliest start date for channel
     starts = siteInfo(I,2);
     startdns = datenum(datevec(siteInfo(I,2),'yyyy-mm-ddTHH:MM:SS'));
@@ -60,13 +61,13 @@ for c = 1:length(uchannels)
                 datestr(segments(s).startTime,'yyyy-mm-ddTHH:MM:SS'),...
                 datestr(segments(s).endTime,'yyyy-mm-ddTHH:MM:SS')));
         xlabel('Sample number');
-        
+
         % Units of 'counts' based on plots from web service. See
         % directory v0/scale for example plots.
         if isfield(segments(s),'dataScaled')
             ylabel(segments(s).dataScaledUnits);
         else
-            ylabel('Counts'); 
+            ylabel('Counts');
         end
-    end   
+    end
 end
